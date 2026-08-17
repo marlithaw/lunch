@@ -1,9 +1,10 @@
 name: Deploy to GitHub Pages
 
 # Publishes the site to GitHub Pages on every push to main.
-# One-time setup: in the repo, go to Settings -> Pages and set
-# "Build and deployment" -> Source to "GitHub Actions". After that this
-# workflow serves index.html at https://marlithaw.github.io/lunch/.
+# The Configure Pages step below enables Pages with the "GitHub Actions"
+# source automatically (enablement: true), so no manual repo setting is
+# needed. After the first successful run the site is served at
+# https://marlithaw.github.io/lunch/.
 
 on:
   push:
@@ -32,6 +33,10 @@ jobs:
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
+        with:
+          # Enable Pages (source = GitHub Actions) automatically on first run,
+          # so no manual Settings -> Pages toggle is required.
+          enablement: true
 
       - name: Upload site
         uses: actions/upload-pages-artifact@v3

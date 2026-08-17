@@ -8,7 +8,7 @@ Built as a single self-contained `index.html`. No build step, no backend, no dep
 
 - **Quick look:** open `index.html` in any modern browser, press **Start Lunch Timer**, then **Fullscreen**.
 - **Real classroom use:** run it from a real browser tab on the projector machine (not inside a sandboxed preview) so the microphone (Auto-listen) and score saving work.
-- **Publish with GitHub Pages:** merges to `main` deploy automatically via the included workflow (`.github/workflows/deploy.yml`). One-time setup: go to **Settings → Pages → Build and deployment → Source** and choose **GitHub Actions**. After that the tool is live at `https://marlithaw.github.io/lunch/`.
+- **Publish with GitHub Pages:** merges to `main` deploy automatically via the included workflow (`.github/workflows/deploy.yml`), which also enables Pages on its first run — no manual setting needed. Once it succeeds the tool is live at `https://marlithaw.github.io/lunch/`. (If an org policy blocks auto-enable, set **Settings → Pages → Source** to **GitHub Actions** once and re-run.)
 
 ## What it does
 
