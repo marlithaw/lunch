@@ -8,7 +8,7 @@ Built as a single self-contained `index.html`. No build step, no backend, no dep
 
 - **Quick look:** open `index.html` in any modern browser, press **Start Lunch Timer**, then **Fullscreen**.
 - **Real classroom use:** run it from a real browser tab on the projector machine (not inside a sandboxed preview) so the microphone (Auto-listen) and score saving work.
-- **Publish with GitHub Pages:** push this repo, then in the repo settings enable Pages from the `main` branch root. The tool loads at `https://<user>.github.io/<repo>/`.
+- **Publish with GitHub Pages:** merges to `main` deploy automatically via the included workflow (`.github/workflows/deploy.yml`). One-time setup: go to **Settings → Pages → Build and deployment → Source** and choose **GitHub Actions**. After that the tool is live at `https://marlithaw.github.io/lunch/`.
 
 ## What it does
 
@@ -32,6 +32,7 @@ Built as a single self-contained `index.html`. No build step, no backend, no dep
 - Sizing uses `vw` / `vh` so it fills a projector at full screen. It looks small in a narrow preview pane; that is expected.
 - Scores persist in `localStorage` under keys `lunchScores_<groupId>`. Wrapped in try/catch so a sandbox that blocks storage degrades gracefully instead of crashing.
 - No `alert()` / `confirm()` (sandboxes block them). Reset uses a two-tap confirm.
+- Still one self-contained `index.html`, now with an inline SVG flame favicon and social/`theme-color` meta tags. Deployment is a small GitHub Actions workflow that publishes the repo root to Pages — no build step, no bundler.
 
 ## Open items for the next build session
 
