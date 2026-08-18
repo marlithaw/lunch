@@ -151,10 +151,15 @@
   .bonus:hover{filter:brightness(1.03)}
   .redir{background:#eee3d5;color:#6b5b46}
   .redir:hover{filter:brightness(.97)}
+  .minus{background:#f3cfc6;color:#7a2417}
+  .minus:hover{filter:brightness(.97)}
   .redir.flash-r{animation:redflash .6s ease}
   @keyframes redflash{0%,100%{background:#eee3d5}50%{background:#f3cfc6}}
   .floatpts{position:absolute;left:50%;top:40%;transform:translateX(-50%);font-size:3.4vw;font-weight:900;
             color:var(--green);pointer-events:none;animation:floatup 1s ease forwards}
+  .floatpts.fminus{color:var(--red)}
+  select.ctl{-webkit-appearance:none;appearance:none;padding-right:1.8vw;background-image:linear-gradient(180deg,#fff,#fff)}
+  .soundpick{margin-top:18px}
   @keyframes floatup{0%{opacity:0;transform:translate(-50%,1vh) scale(.8)}20%{opacity:1}100%{opacity:0;transform:translate(-50%,-6vh) scale(1.1)}}
   .howto{text-align:center;font-size:1.25vw;color:#5f564a;padding-top:.4vh}
   .hcard.redirected{animation:redirshake .5s ease; box-shadow:0 0 0 .5vh var(--yellow), var(--shadow)}
@@ -188,10 +193,20 @@
   <div class="total" id="totalRow">Total: <b id="totalmin">30 min</b></div>
 
   <div class="compsetup">
-    <label class="compenable"><input type="checkbox" id="compOn" checked> <b>Homeroom competition</b> (points are gain-only)</label>
+    <label class="compenable"><input type="checkbox" id="compOn" checked> <b>Homeroom competition</b> (points stay until you reset)</label>
+    <label class="compenable"><input type="checkbox" id="allowMinus"> <b>Allow taking a point away</b> (adds a &minus;1 button)</label>
     <div class="grouprow"><label for="groupSel">Lunch group</label><select id="groupSel"></select></div>
     <div class="compgroups" id="compGroups"></div>
   </div>
+
+  <div class="grouprow soundpick"><label for="bedSel">Ambient sound</label><select id="bedSel">
+    <option value="neosoul">Neo-Soul (calm R&amp;B)</option>
+    <option value="rainforest">Rainforest</option>
+    <option value="ocean">Ocean Waves</option>
+    <option value="rain">Gentle Rain</option>
+    <option value="meditation">Meditation Bowls</option>
+    <option value="lofi">Lo-Fi Piano</option>
+  </select></div>
 
   <button class="start" id="startBtn">Start Lunch Timer</button>
 
@@ -264,6 +279,14 @@
     <button class="ctl" id="viewBtn">Scoreboard</button>
     <button class="ctl" id="pauseBtn">Pause</button>
     <button class="ctl" id="soundBtn">Sound: On</button>
+    <select class="ctl" id="bedSelLive" title="Ambient sound">
+      <option value="neosoul">&#127925; Neo-Soul</option>
+      <option value="rainforest">&#127925; Rainforest</option>
+      <option value="ocean">&#127925; Ocean Waves</option>
+      <option value="rain">&#127925; Gentle Rain</option>
+      <option value="meditation">&#127925; Meditation Bowls</option>
+      <option value="lofi">&#127925; Lo-Fi Piano</option>
+    </select>
     <button class="ctl" id="fsBtn">Fullscreen</button>
     <button class="ctl" id="backBtn">Setup</button>
   </div>
@@ -330,7 +353,8 @@ function updateHourglass(frac,color){
   st.setAttribute('fill',color);
 }
 const Sound = (function(){
-  let ctx=null, master=null, chordBus=null, on=true, loopTimer=null, nextStart=0;
+  let ctx=null, master=null, chordBus=null, on=true, nextStart=0;
+  let bed='neosoul', bedNodes=[], bedTimers=[];
   const BEAT=0.72, BAR=4*0.72, LOOP=4*(4*0.72); // 4 bars, laid-back tempo
   // neo-soul / R&B loop: Cmaj9 - Am9 - Dm9 - G13
   const CHORDS=[
@@ -346,11 +370,88 @@ const Sound = (function(){
     const lp=ctx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=3200; lp.Q.value=.5;
     master.connect(lp); lp.connect(ctx.destination);
     chordBus=ctx.createGain(); chordBus.gain.value=.9; chordBus.connect(master);
+    master.gain.linearRampToValueAtTime(.8, ctx.currentTime+3);
+    startBed(bed);
+  }
+  /* ----- ambient beds (all synthesized, no audio files) ----- */
+  function noiseBuffer(){ const len=ctx.sampleRate*2, b=ctx.createBuffer(1,len,ctx.sampleRate), d=b.getChannelData(0);
+    for(let i=0;i<len;i++) d[i]=Math.random()*2-1; return b; }
+  function stopBed(){
+    bedTimers.forEach(t=>clearInterval(t)); bedTimers=[];
+    bedNodes.forEach(n=>{ try{n.stop&&n.stop();}catch(e){} try{n.disconnect&&n.disconnect();}catch(e){} });
+    bedNodes=[];
+  }
+  function startBed(name){
+    if(!ctx) return;
+    stopBed();
+    ({neosoul:bedNeosoul,rainforest:bedRainforest,ocean:bedOcean,rain:bedRain,meditation:bedMeditation,lofi:bedLofi}[name]||bedNeosoul)();
+  }
+  function bedNeosoul(){
     const trem=ctx.createOscillator(); trem.type='sine'; trem.frequency.value=5.2;
     const td=ctx.createGain(); td.gain.value=.12; trem.connect(td); td.connect(chordBus.gain); trem.start();
-    master.gain.linearRampToValueAtTime(.8, ctx.currentTime+3);
+    bedNodes.push(trem,td);
     nextStart=ctx.currentTime+.5; scheduleLoop(nextStart); nextStart+=LOOP;
-    loopTimer=setInterval(()=>{ if(ctx.currentTime>nextStart-2.5){ scheduleLoop(nextStart); nextStart+=LOOP; } }, 1000);
+    const lt=setInterval(()=>{ if(ctx.currentTime>nextStart-2.5){ scheduleLoop(nextStart); nextStart+=LOOP; } }, 1000);
+    bedTimers.push(lt);
+  }
+  function bedRain(){
+    const src=ctx.createBufferSource(); src.buffer=noiseBuffer(); src.loop=true;
+    const lp=ctx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=1800; lp.Q.value=.3;
+    const g=ctx.createGain(); g.gain.value=.18; src.connect(lp); lp.connect(g); g.connect(chordBus); src.start();
+    const lfo=ctx.createOscillator(); lfo.type='sine'; lfo.frequency.value=.08;
+    const lg=ctx.createGain(); lg.gain.value=.05; lfo.connect(lg); lg.connect(g.gain); lfo.start();
+    bedNodes.push(src,lp,g,lfo,lg);
+  }
+  function bedOcean(){
+    const src=ctx.createBufferSource(); src.buffer=noiseBuffer(); src.loop=true;
+    const lp=ctx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=500; lp.Q.value=.2;
+    const g=ctx.createGain(); g.gain.value=.0001; src.connect(lp); lp.connect(g); g.connect(chordBus); src.start();
+    const off=ctx.createConstantSource(); off.offset.value=.17; off.connect(g.gain); off.start();
+    const lfo=ctx.createOscillator(); lfo.type='sine'; lfo.frequency.value=.09; // ~11s waves
+    const lg=ctx.createGain(); lg.gain.value=.16; lfo.connect(lg); lg.connect(g.gain);
+    const lg2=ctx.createGain(); lg2.gain.value=250; lfo.connect(lg2); lg2.connect(lp.frequency); lfo.start();
+    bedNodes.push(src,lp,g,off,lfo,lg,lg2);
+  }
+  function chirp(){
+    const t0=ctx.currentTime, o=ctx.createOscillator(), g=ctx.createGain(), base=1800+Math.random()*1400;
+    o.type='sine'; o.frequency.setValueAtTime(base,t0);
+    o.frequency.linearRampToValueAtTime(base*1.4,t0+.08); o.frequency.linearRampToValueAtTime(base*1.1,t0+.16);
+    g.gain.setValueAtTime(0,t0); g.gain.linearRampToValueAtTime(.05,t0+.02); g.gain.exponentialRampToValueAtTime(.0001,t0+.22);
+    o.connect(g); g.connect(chordBus); o.start(t0); o.stop(t0+.3);
+    if(Math.random()<.5){ const o2=ctx.createOscillator(), g2=ctx.createGain(); o2.type='sine';
+      o2.frequency.setValueAtTime(base*1.2,t0+.18); o2.frequency.linearRampToValueAtTime(base*1.5,t0+.26);
+      g2.gain.setValueAtTime(0,t0+.18); g2.gain.linearRampToValueAtTime(.04,t0+.2); g2.gain.exponentialRampToValueAtTime(.0001,t0+.4);
+      o2.connect(g2); g2.connect(chordBus); o2.start(t0+.18); o2.stop(t0+.45); }
+  }
+  function bedRainforest(){
+    const src=ctx.createBufferSource(); src.buffer=noiseBuffer(); src.loop=true;
+    const bp=ctx.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=2500; bp.Q.value=.4;
+    const g=ctx.createGain(); g.gain.value=.06; src.connect(bp); bp.connect(g); g.connect(chordBus); src.start();
+    bedNodes.push(src,bp,g);
+    [220,277.18,329.63].forEach(f=>{ const o=ctx.createOscillator(); o.type='sine'; o.frequency.value=f;
+      const pg=ctx.createGain(); pg.gain.value=.03; o.connect(pg); pg.connect(chordBus); o.start(); bedNodes.push(o,pg); });
+    const t=setInterval(()=>{ if(Math.random()<.6) chirp(); }, 2600); bedTimers.push(t);
+  }
+  function bowl(){
+    const t0=ctx.currentTime, freqs=[329.63,392.00,493.88], base=freqs[Math.floor(Math.random()*freqs.length)];
+    [1,2.7,5.4].forEach((m,i)=>{ const o=ctx.createOscillator(), g=ctx.createGain(); o.type='sine'; o.frequency.value=base*m;
+      const v=[.09,.04,.02][i]; g.gain.setValueAtTime(0,t0); g.gain.linearRampToValueAtTime(v,t0+.05); g.gain.exponentialRampToValueAtTime(.0001,t0+6);
+      o.connect(g); g.connect(chordBus); o.start(t0); o.stop(t0+6.2); });
+  }
+  function bedMeditation(){
+    [130.81,196.00].forEach(f=>{
+      const o=ctx.createOscillator(); o.type='sine'; o.frequency.value=f; const dg=ctx.createGain(); dg.gain.value=.05; o.connect(dg); dg.connect(chordBus); o.start(); bedNodes.push(o,dg);
+      const o2=ctx.createOscillator(); o2.type='sine'; o2.frequency.value=f*1.006; const dg2=ctx.createGain(); dg2.gain.value=.04; o2.connect(dg2); dg2.connect(chordBus); o2.start(); bedNodes.push(o2,dg2);
+    });
+    const t=setInterval(bowl, 8000); bedTimers.push(t); bowl();
+  }
+  function bedLofi(){
+    const scale=[261.63,293.66,329.63,392.00,440.00,523.25];
+    [130.81,196.00].forEach(f=>{ const o=ctx.createOscillator(); o.type='triangle'; o.frequency.value=f;
+      const lp=ctx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=800; const pg=ctx.createGain(); pg.gain.value=.03;
+      o.connect(lp); lp.connect(pg); pg.connect(chordBus); o.start(); bedNodes.push(o,lp,pg); });
+    const t=setInterval(()=>{ rhodes(scale[Math.floor(Math.random()*scale.length)], ctx.currentTime, 1.6, .09); }, 1400);
+    bedTimers.push(t);
   }
   function rhodes(freq,t0,dur,vol){ // warm electric-piano voice
     const o=ctx.createOscillator(),ob=ctx.createOscillator(),g=ctx.createGain(),gb=ctx.createGain();
@@ -406,7 +507,9 @@ const Sound = (function(){
     toggle(){ if(!ctx)return on; on=!on;
       master.gain.cancelScheduledValues(ctx.currentTime);
       master.gain.linearRampToValueAtTime(on?.8:0, ctx.currentTime+.6); return on; },
-    isOn(){return on;}
+    isOn(){return on;},
+    setBed(name){ bed=name; if(ctx) startBed(bed); },
+    getBed(){ return bed; }
   };
 })();
 
@@ -577,10 +680,18 @@ const GROUPS=[
     {label:'7th Grade', teachers:['','','']},
     {label:'8th Grade', teachers:['','','']}]}
 ];
-let homerooms=[], scores={}, compEnabled=true, curGroupId='g3_4';
+let homerooms=[], scores={}, compEnabled=true, curGroupId='g3_4', allowMinus=false;
 function groupById(id){ return GROUPS.find(g=>g.id===id)||GROUPS[2]; }
 function loadScores(id){ try{const s=localStorage.getItem('lunchScores_'+id);if(s)return JSON.parse(s);}catch(e){} return {}; }
 function saveScores(){ try{localStorage.setItem('lunchScores_'+curGroupId,JSON.stringify(scores));}catch(e){} }
+// roster (teacher names) persists per group so they stay set once entered
+function loadRoster(id){ try{const s=localStorage.getItem('lunchRoster_'+id);if(s)return JSON.parse(s);}catch(e){} return null; }
+function saveRoster(id,roster){ try{localStorage.setItem('lunchRoster_'+id,JSON.stringify(roster));}catch(e){} }
+function persistRoster(){
+  const g=groupById(curGroupId), roster=g.bands.map(()=>[]);
+  document.querySelectorAll('#compGroups .hname').forEach(inp=>{ roster[+inp.dataset.band][+inp.dataset.slot]=inp.value; });
+  saveRoster(curGroupId,roster);
+}
 function buildGroupSelect(){
   const sel=$('groupSel');
   sel.innerHTML=GROUPS.map(g=>`<option value="${g.id}"${g.id===curGroupId?' selected':''}>${g.label}</option>`).join('');
@@ -588,16 +699,22 @@ function buildGroupSelect(){
   renderGroupInputs();
 }
 function renderGroupInputs(){
-  const g=groupById(curGroupId);
+  const g=groupById(curGroupId), saved=loadRoster(curGroupId);
   $('compGroups').innerHTML=g.bands.map((b,bi)=>`
     <div class="cgcol">
       <div class="cglabel">${b.label}</div>
-      ${b.teachers.map(t=>`<input class="hname" data-band="${bi}" value="${t.replace(/"/g,'&quot;')}" placeholder="Teacher name">`).join('')}
+      ${b.teachers.map((t,si)=>{
+        const val=(saved&&saved[bi]&&saved[bi][si]!=null)?saved[bi][si]:t;
+        return `<input class="hname" data-band="${bi}" data-slot="${si}" value="${String(val).replace(/"/g,'&quot;')}" placeholder="Teacher name">`;
+      }).join('')}
     </div>`).join('');
+  document.querySelectorAll('#compGroups .hname').forEach(inp=>inp.addEventListener('input',persistRoster));
 }
 function initCompetition(){
   compEnabled=$('compOn').checked;
+  allowMinus=$('allowMinus').checked;
   curGroupId=$('groupSel').value;
+  persistRoster();
   const g=groupById(curGroupId);
   homerooms=[...document.querySelectorAll('#compGroups .hname')]
     .map(i=>({name:i.value.trim(),band:parseInt(i.dataset.band,10)}))
@@ -618,12 +735,14 @@ function buildCards(){
       <div class="hname-lg">${h.name}</div>
       <div class="hpts">0</div>
       <div class="hbtns">
+        ${allowMinus?'<button class="minus">&minus;1</button>':''}
         <button class="bonus">&#11088; +5</button>
         <button class="redir">&#8630; Redirect</button>
       </div>`;
     c.addEventListener('click',()=>award(h.name,1,c));
     c.querySelector('.bonus').addEventListener('click',e=>{e.stopPropagation();award(h.name,5,c);});
     c.querySelector('.redir').addEventListener('click',e=>{e.stopPropagation();redirect(c,h.name);});
+    if(allowMinus){ const mb=c.querySelector('.minus'); if(mb) mb.addEventListener('click',e=>{e.stopPropagation();minusOne(c,h.name);}); }
     (h.band===0?gA:gB).appendChild(c);
   });
   renderScores();
@@ -637,14 +756,43 @@ function award(name,pts,card){
   renderScores();
 }
 let redirTimer=null;
+// spoken settle cue (browser voice, no audio file); silently no-ops where speech is unavailable
+const SETTLE_PHRASES=["Oh no \u2014 let's get back on track.","Let's reset and get back on track."];
+let settleIdx=0;
+function speakSettle(){
+  try{
+    if(!('speechSynthesis' in window)) return null;
+    const phrase=SETTLE_PHRASES[settleIdx++ % SETTLE_PHRASES.length];
+    const u=new SpeechSynthesisUtterance(phrase);
+    u.rate=.95; u.pitch=1.05; u.volume=1;
+    window.speechSynthesis.cancel(); window.speechSynthesis.speak(u);
+    return phrase;
+  }catch(e){ return null; }
+}
 function redirect(card,name){
   Sound.redirect();
+  const phrase=speakSettle();
   const b=card.querySelector('.redir'); b.classList.remove('flash-r'); void b.offsetWidth; b.classList.add('flash-r');
   card.classList.remove('redirected'); void card.offsetWidth; card.classList.add('redirected');
   setTimeout(()=>card.classList.remove('redirected'),1500);
   const f=document.createElement('div'); f.className='floatredir'; f.textContent='\u21ba Redirect';
   card.appendChild(f); setTimeout(()=>f.remove(),1500);
-  const ban=$('redirectBanner'); ban.textContent='\u21ba '+name+' \u00b7 reset and try again'; ban.classList.add('show');
+  const ban=$('redirectBanner'); ban.textContent='\u21ba '+name+' \u00b7 '+(phrase||"let's get back on track"); ban.classList.add('show');
+  clearTimeout(redirTimer); redirTimer=setTimeout(()=>ban.classList.remove('show'),3500);
+}
+function minusOne(card,name){
+  const cur=scores[name]||0;
+  if(cur>0){
+    scores[name]=cur-1; saveScores(); renderScores();
+    const f=document.createElement('div'); f.className='floatpts fminus'; f.textContent='\u22121';
+    card.appendChild(f); setTimeout(()=>f.remove(),1000);
+    card.classList.remove('pop'); void card.offsetWidth; card.classList.add('pop');
+  }
+  Sound.redirect();
+  const phrase=speakSettle();
+  card.classList.remove('redirected'); void card.offsetWidth; card.classList.add('redirected');
+  setTimeout(()=>card.classList.remove('redirected'),1500);
+  const ban=$('redirectBanner'); ban.textContent='\u2212 '+name+' \u00b7 '+(phrase||"let's get back on track"); ban.classList.add('show');
   clearTimeout(redirTimer); redirTimer=setTimeout(()=>ban.classList.remove('show'),3500);
 }
 function renderScores(){
@@ -661,6 +809,7 @@ $('startBtn').onclick=()=>{
   readStages();
   initCompetition();
   $('timerView').classList.add('on'); $('scoreView').classList.remove('on'); $('viewBtn').textContent='Scoreboard';
+  const bedv=$('bedSel').value; Sound.setBed(bedv); $('bedSelLive').value=bedv;
   Sound.start(); Sound.startAlarm();
   $('setup').style.display='none'; $('display').classList.add('on'); document.body.classList.add('running');
   $('hourglass').innerHTML=HG_SVG;
@@ -704,6 +853,12 @@ $('resetBtn').onclick=()=>{
   resetArmed=false; clearTimeout(resetTimer); $('resetBtn').textContent='Reset scores'; $('resetBtn').classList.remove('arm');
 };
 $('compOn').addEventListener('change',e=>{ document.querySelector('.compsetup').classList.toggle('disabled',!e.target.checked); });
+// restore saved preferences: ambient bed + "allow -1"
+try{ const b=localStorage.getItem('lunchBed'); if(b){ $('bedSel').value=b; $('bedSelLive').value=b; } }catch(e){}
+try{ $('allowMinus').checked = localStorage.getItem('lunchAllowMinus')==='1'; }catch(e){}
+$('allowMinus').addEventListener('change',e=>{ try{localStorage.setItem('lunchAllowMinus',e.target.checked?'1':'0');}catch(_){} });
+$('bedSel').addEventListener('change',e=>{ $('bedSelLive').value=e.target.value; try{localStorage.setItem('lunchBed',e.target.value);}catch(_){} });
+$('bedSelLive').addEventListener('change',e=>{ Sound.setBed(e.target.value); $('bedSel').value=e.target.value; try{localStorage.setItem('lunchBed',e.target.value);}catch(_){} });
 buildGroupSelect();
 document.addEventListener('keydown',e=>{
   if(e.code==='Space' && $('display').classList.contains('on')){ e.preventDefault(); triggerTooLoud(); }

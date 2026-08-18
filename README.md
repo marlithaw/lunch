@@ -17,10 +17,11 @@ Built as a single self-contained `index.html`. No build step, no backend, no dep
 - **Hourglass wind-down.** Sand drains through the current stage, tinted to the current level, emptying exactly as the big countdown hits zero.
 - **Cleanup countdown.** A live "Cleanup in mm:ss" line during earlier stages; a distinct three-bell alarm when cleanup begins.
 - **Alarms.** A bright start alarm, a soft ding at each stage change, the cleanup alarm, and a closing chord. All synthesized (Web Audio), no audio files.
-- **Music bed.** An original neo-soul / R&B loop: a Rhodes-style chord progression (Cmaj9, Am9, Dm9, G13) over a rounded bass with gentle tremolo. Muteable.
+- **Music bed (six options).** Pick an ambient track in setup or from the display's dropdown: the original neo-soul / R&B loop (Cmaj9, Am9, Dm9, G13 over a rounded bass), Rainforest, Ocean Waves, Gentle Rain, Meditation Bowls, or Lo-Fi Piano. All synthesized live with Web Audio — no audio files. The choice is remembered, and the bed can be switched mid-lunch. Muteable.
 - **Too Loud alert.** A manual button (or the spacebar) fires a settle-down chime plus a full-screen "BRING IT DOWN" overlay naming the level to return to.
 - **Auto-listen.** Optional microphone monitor with a live room meter and sensitivity slider; fires the same alert automatically when the room stays too loud, with a cooldown. Requires mic permission, so it only works when the file is served from a real browser tab.
-- **Homeroom competition (gain-only).** Tap a homeroom for +1, the star button for +5. Points never go down. The current leader wears a crown. A separate **Redirect** action plays a soft non-punitive cue and a visible "reset and try again" banner with no point change.
+- **Homeroom competition.** Tap a homeroom for +1, the star button for +5. The current leader wears a crown. A separate **Redirect** action plays a soft settle cue — a chime plus a spoken "let's get back on track" (browser voice, no audio file) — and a visible banner, with no point change. Points are gain-only by default; a setup toggle, **"Allow taking a point away,"** adds a **−1** button (floors at 0) that plays the same settle cue.
+- **Teacher names stay set.** Names typed in setup save per lunch group to `localStorage` and reload automatically — enter them once and they persist (per device/browser). Scores persist the same way until you tap **Reset scores**.
 - **Five lunch groups in one file.** A setup dropdown switches between Kinder & Dream, 1st & 2nd, 3rd & 4th, 5th & 6th, and 7th & 8th. Each group keeps its own scoreboard, saved separately in `localStorage`.
 - **Matchbook styling.** Ember and flame palette with an original flame mark and wordmark, kept large and rounded so it reads as a kid tool.
 
@@ -36,7 +37,7 @@ Built as a single self-contained `index.html`. No build step, no backend, no dep
 
 ## Open items for the next build session
 
-1. **Teacher names.** Only 3rd and 4th grade are filled with real homerooms (Jemison, Smallwood, Dr. Romeril / Prince, Shehadeh, Milton). The other four groups have blank editable slots. Fill real names into the `GROUPS` array near the top of the competition script in `index.html`. Confirm whether "Dream" is its own set of homerooms and whether any band has more or fewer than three homerooms.
+1. **Teacher names.** Names are now entered in the setup screen and saved per group in the browser, so each band just needs to be filled in once on the machine that runs the display. 3rd and 4th grade ship with real homerooms (Jemison, Smallwood, Dr. Romeril / Prince, Shehadeh, Milton) as starting defaults; the other four groups start blank. Each band is fixed at three slots for now. Still open to confirm: whether "Dream" is its own set of homerooms, and whether any band needs more or fewer than three rooms (add/remove slots is a possible future enhancement).
 2. **Default stage timings.** Currently Get Settled 5 / Eat & Connect 15 / Finish Up 4 / Cleanup 6 (sums to 30). Replace with the real routine so staff do not re-enter it daily.
 3. **Auto-listen sensitivity.** Default threshold is a guess; calibrate against the real cafeteria noise floor.
 4. **Exact Matchbook brand.** Palette is matched by eye to the "ignite / spark" identity. Swap in official hex codes or the real logo if available.
